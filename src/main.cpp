@@ -2,6 +2,8 @@
 #include <string>
 #include <random>
 #include <thread>
+#include <iostream>
+#include <lrrp.h>
 
 using namespace std;
 
@@ -43,13 +45,33 @@ public:
 };
 
 const int TEMP_CHECK_INTERVAL_S = 1;
+int currTemp = 0;
+
+class temp_handler : public lrrp::handler_base {
+public:
+    virtual lrrp::response handle(const lrrp::request& req) override {
+        return lrrp::response_builder().set_payload(json({{"temp", currTemp}})).build();
+    }
+};
+
+void start_up_server() {
+    lrrp::server s(3660);
+    s.add_handler("temp", std::make_unique<temp_handler>());
+
+    s.run_async();
+}
 
 int main(int argc, char** argv) {
+    std::thread serv(start_up_server);
+    serv.detach();
+
     TempGen  tempGen;
     TempLogger tempLogger;
 
-    while(true) {
-        tempLogger.log(to_string(tempGen.getNext()) + " C");
+    for(int i = 0; true; i++) {
+        currTemp = tempGen.getNext();
+        tempLogger.log(to_string(currTemp) + " C");
+        cout << "Checked temperature (" << i << ") times" << endl;
 
         this_thread::sleep_for(chrono::seconds(TEMP_CHECK_INTERVAL_S));
     }
