@@ -1,0 +1,9 @@
+[Unit]
+Description=Temperature checker
+
+[Service]
+ExecStart=/usr/bin/temp-check-service
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
