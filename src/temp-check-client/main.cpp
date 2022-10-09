@@ -12,5 +12,5 @@ int main() {
     std::cout
         << "Current temperature is: "
         << res.get_payload()["temp"]
-        << std::endl;
+        << " C" << std::endl;
 }

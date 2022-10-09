@@ -2,34 +2,42 @@
 #include <string>
 #include <random>
 #include <thread>
+#include <vector>
 #include <iostream>
+#include <filesystem>
+#include <memory>
 #include <lrrp.h>
 
 using namespace std;
+namespace fs = std::filesystem;
 
-class TempGen
+class DS18B20
 {
-private:
-    int m_tmp = 0;
-
-    const int MAX_RANGE = 5;
+    fs::path m_path;
 public:
-    TempGen() {
-        srand(time(NULL));
-    }
+    static const string id;
 
-    int getNext() {
-        m_tmp += (rand() % MAX_RANGE - (MAX_RANGE / 2));
-        return m_tmp;
+    DS18B20(fs::path path) : m_path(path) {}
+
+    float temperature() {
+        ifstream tempFile((m_path/"temperature").string());
+        int temp = 0;
+        if(tempFile.is_open()) {
+            tempFile >> temp;
+        }
+        tempFile.close();
+        return (float)temp / 1000.0;
     }
 };
 
-class TempLogger
+const string DS18B20::id = "28";
+
+class Logger
 {
 private:
     string m_logFilePath;
 public:
-    TempLogger(string logFilePath = "/dev/kmsg")
+    Logger(string logFilePath = "/dev/kmsg")
         : m_logFilePath(logFilePath) {}
     
     void log(string msg) {
@@ -44,13 +52,29 @@ public:
     }
 };
 
-const int TEMP_CHECK_INTERVAL_S = 1;
-int currTemp = 0;
+template <typename Device>
+vector<Device> get_devices() {
+    vector<Device> ret;
+
+    fs::path devices("/sys/bus/w1/devices");
+    for(auto& el : fs::directory_iterator(devices)) {
+        if(el.is_directory() && el.path().filename().string().starts_with(Device::id)) {
+            ret.push_back(Device(fs::absolute(el.path())));
+        }
+    }
+
+    return ret;
+}
 
 class temp_handler : public lrrp::handler_base {
 public:
     virtual lrrp::response handle(const lrrp::request& req) override {
-        return lrrp::response_builder().set_payload(json({{"temp", currTemp}})).build();
+        auto devices = get_devices<DS18B20>();
+        float temperature = 0;
+        if(devices.size() > 0) {
+            temperature = devices[0].temperature();
+        }
+        return lrrp::response_builder().set_payload(json({{"temp", temperature}})).build();
     }
 };
 
@@ -61,17 +85,21 @@ void start_up_server() {
     s.run_async();
 }
 
+const int TEMP_CHECK_INTERVAL_S = 1;
+
 int main(int argc, char** argv) {
     std::thread serv(start_up_server);
     serv.detach();
 
-    TempGen  tempGen;
-    TempLogger tempLogger;
+    Logger logger;
 
     for(int i = 0; true; i++) {
-        currTemp = tempGen.getNext();
-        tempLogger.log(to_string(currTemp) + " C");
-        cout << "Checked temperature (" << i << ") times" << endl;
+        auto devices = get_devices<DS18B20>();
+        float temperature = 0;
+        if(devices.size() > 0) {
+            temperature = devices[0].temperature();
+            logger.log(to_string(temperature) + " C");
+        }
 
         this_thread::sleep_for(chrono::seconds(TEMP_CHECK_INTERVAL_S));
     }
