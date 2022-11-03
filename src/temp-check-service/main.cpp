@@ -6,7 +6,8 @@
 #include <iostream>
 #include <filesystem>
 #include <memory>
-#include <lrrp.h>
+
+#include "temp_check_interface.hpp"
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -66,23 +67,19 @@ vector<Device> get_devices() {
     return ret;
 }
 
-class temp_handler : public lrrp::handler_base {
-public:
-    virtual lrrp::response handle(const lrrp::request& req) override {
-        auto devices = get_devices<DS18B20>();
-        float temperature = 0;
-        if(devices.size() > 0) {
-            temperature = devices[0].temperature();
-        }
-        return lrrp::response_builder().set_payload(json({{"temp", temperature}})).build();
+INIT_MIDF_SERVER();
+
+MIDF_IMPL_FUNC(float, temp_sensor_get_temperature) () {
+    auto devices = get_devices<DS18B20>();
+    float temperature = 0;
+    if(devices.size() > 0) {
+        temperature = devices[0].temperature();
     }
-};
+    return temperature;
+}
 
 void start_up_server() {
-    lrrp::server s(3660);
-    s.add_handler("temp", std::make_unique<temp_handler>());
-
-    s.run_async();
+    START_MIDF_SERVER()
 }
 
 const int TEMP_CHECK_INTERVAL_S = 1;
