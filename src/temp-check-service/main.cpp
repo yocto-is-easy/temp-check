@@ -67,9 +67,9 @@ vector<Device> get_devices() {
     return ret;
 }
 
-INIT_MIDF_SERVER();
+INIT_MIDF_SERVER(temp_check);
 
-MIDF_IMPL_FUNC(float, temp_sensor_get_temperature) () {
+MIDF_IMPL_FUNC(float, temp_check, get_temperature) () {
     auto devices = get_devices<DS18B20>();
     float temperature = 0;
     if(devices.size() > 0) {
@@ -79,7 +79,17 @@ MIDF_IMPL_FUNC(float, temp_sensor_get_temperature) () {
 }
 
 void start_up_server() {
-    START_MIDF_SERVER()
+    START_MIDF_SERVER(temp_check);
+}
+
+INIT_MIDF_SERVER(test_service);
+
+MIDF_IMPL_FUNC(int, test_service, sum, int, int) (int a, int b) {
+    return a + b;
+}
+
+void start_up_test_service() {
+    START_MIDF_SERVER(test_service);
 }
 
 const int TEMP_CHECK_INTERVAL_S = 1;
@@ -87,6 +97,9 @@ const int TEMP_CHECK_INTERVAL_S = 1;
 int main(int argc, char** argv) {
     std::thread serv(start_up_server);
     serv.detach();
+
+    std::thread test_service(start_up_test_service);
+    test_service.detach();
 
     Logger logger;
 
