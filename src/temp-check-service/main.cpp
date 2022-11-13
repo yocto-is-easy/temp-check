@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <memory>
 
+#include <supervisor.hpp>
 #include "temp_check_interface.hpp"
 
 using namespace std;

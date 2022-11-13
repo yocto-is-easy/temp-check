@@ -1,5 +1,6 @@
 [Unit]
 Description=Temperature checker
+Wants=supervisor.service
 
 [Service]
 ExecStart=/usr/bin/temp-check-service
