@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <supervisor.hpp>
+#include <logger.hpp>
 #include "temp_check_interface.hpp"
 
 using namespace std;
@@ -33,26 +34,6 @@ public:
 };
 
 const string DS18B20::id = "28";
-
-class Logger
-{
-private:
-    string m_logFilePath;
-public:
-    Logger(string logFilePath = "/dev/kmsg")
-        : m_logFilePath(logFilePath) {}
-    
-    void log(string msg) {
-        ofstream logFile;
-
-        logFile.open(m_logFilePath);
-        if(logFile.is_open()) {
-            logFile << ("temp-check-service: " + msg);
-            logFile.close();
-            return;
-        }
-    }
-};
 
 template <typename Device>
 vector<Device> get_devices() {
@@ -102,14 +83,12 @@ int main(int argc, char** argv) {
     std::thread test_service(start_up_test_service);
     test_service.detach();
 
-    Logger logger;
-
     for(int i = 0; true; i++) {
         auto devices = get_devices<DS18B20>();
         float temperature = 0;
         if(devices.size() > 0) {
             temperature = devices[0].temperature();
-            logger.log(to_string(temperature) + " C");
+            logger::log("temp-check-service", to_string(temperature) + " C");
         }
 
         this_thread::sleep_for(chrono::seconds(TEMP_CHECK_INTERVAL_S));
