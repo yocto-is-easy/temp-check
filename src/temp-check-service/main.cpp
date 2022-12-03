@@ -74,21 +74,28 @@ void start_up_test_service() {
     START_MIDF_SERVER(test_service);
 }
 
-const int TEMP_CHECK_INTERVAL_S = 1;
+const int TEMP_CHECK_INTERVAL_S = 5;
 
 int main(int argc, char** argv) {
+    logger::alog("temp-check-service", "Initializing the threads for MIDF services...");
     std::thread serv(start_up_server);
     serv.detach();
 
     std::thread test_service(start_up_test_service);
     test_service.detach();
+    logger::alog("temp-check-service", "MIDF services has been inited");
+
+    logger::alog("temp-check-service", "Getting the devices...");
+    auto devices = get_devices<DS18B20>();
+    logger::alog("temp-check-service", "Devices are received");
 
     for(int i = 0; true; i++) {
-        auto devices = get_devices<DS18B20>();
         float temperature = 0;
         if(devices.size() > 0) {
             temperature = devices[0].temperature();
-            logger::log("temp-check-service", to_string(temperature) + " C");
+            logger::alog("temp-check-service", "Measured temperature is: " + to_string(temperature) + " C");
+        } else {
+            logger::alog("temp-check-service", "Error: No available temperature sensor devices");
         }
 
         this_thread::sleep_for(chrono::seconds(TEMP_CHECK_INTERVAL_S));
