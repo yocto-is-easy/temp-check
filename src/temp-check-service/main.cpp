@@ -77,13 +77,17 @@ void start_up_test_service() {
 const int TEMP_CHECK_INTERVAL_S = 5;
 
 int main(int argc, char** argv) {
+    // we do not need any other service to wait for test_service
+    std::thread test_service(start_up_test_service);
+    test_service.detach();
+
+    if(!logger::wait_startup()) {
+        throw std::runtime_error("logger is not available");
+    }
+
     logger::alog("temp-check-service", "Initializing the threads for MIDF services...");
     std::thread serv(start_up_server);
     serv.detach();
-
-    std::thread test_service(start_up_test_service);
-    test_service.detach();
-    logger::alog("temp-check-service", "MIDF services has been inited");
 
     logger::alog("temp-check-service", "Getting the devices...");
     auto devices = get_devices<DS18B20>();
