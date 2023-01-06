@@ -70,6 +70,11 @@ MIDF_IMPL_FUNC(int, test_service, sum, int, int) (int a, int b) {
     return a + b;
 }
 
+MIDF_IMPL_FUNC(std::vector<char>, test_service, get_1mb) () {
+    static std::vector<char> arr_1mb(1000 * 1000, 'a');
+    return arr_1mb;
+}
+
 void start_up_test_service() {
     START_MIDF_SERVER(test_service);
 }
